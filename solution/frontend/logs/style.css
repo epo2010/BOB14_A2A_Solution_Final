@@ -266,6 +266,7 @@
   color: #e2e8f0;
   border: 1px solid rgba(255, 255, 255, 0.3);
   background-color: rgba(0, 0, 0, 0.2);
+  table-layout: fixed; /* 컬럼 너비 고정으로 긴 텍스트에 대비 */
 }
 
 .log-table th,
@@ -277,6 +278,23 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.log-table .col-msg {
+  white-space: normal !important;
+  word-break: break-word;
+  line-height: 1.4;
+}
+
+.log-table .col-agent,
+.log-table .col-policy,
+.log-table .col-actor,
+.log-table .col-method {
+  max-width: 240px;
+}
+
+.table-widget {
+  overflow-x: auto;
 }
 
 /* 헤더 배경 */
@@ -317,6 +335,33 @@
 }
 .btn-secondary.small {
   font-size: 0.85rem;
+}
+
+.widget-header-simple .btn-group {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.widget-header-simple .btn-group .btn-secondary {
+  height: 38px;
+  padding: 0 14px;
+  background-color: #334155;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #e2e8f0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.widget-header-simple .btn-group .btn-secondary:hover {
+  background-color: #475569;
+  border-color: #65d1ff;
+  color: #fff;
+}
+
+.widget-header-simple .btn-group .btn-secondary svg {
+  flex-shrink: 0;
 }
 
 /* 뷰 전환 유틸리티 */
