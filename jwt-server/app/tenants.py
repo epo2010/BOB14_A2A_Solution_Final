@@ -9,75 +9,9 @@ from .schemas import Tenant
 router = APIRouter()
 
 DEFAULT_TENANTS: list[Tenant] = [
-    Tenant(
-        id="logistics",
-        name="Logistics",
-        description="Logistics tenant",
-    ),
-    Tenant(
-        id="customer-service",
-        name="Customer Service",
-        description="Customer support tenant",
-    ),
 ]
 
 DEFAULT_TENANT_RULESETS = {
-    "logistics": {
-        "tenant_id": "logistics",
-        "description": "기본 물류 테넌트 룰셋",
-        "groups": [
-            {
-                "id": "g_ops",
-                "name": "물류 운영",
-                "description": "운영/배송 담당 그룹",
-                "members": ["dev1@a2a.com", "lead@a2a.com"],
-            },
-            {
-                "id": "g_finance",
-                "name": "정산",
-                "description": "물류 정산/회계",
-                "members": ["cfo@a2a.com"],
-            },
-        ],
-        "access_controls": [
-            {
-                "ruleset_id": "logistics_tool_block",
-                "group_id": "g_ops",
-                "type": "tool_validation",
-                "target_agent": "agent_researcher",
-                "tool_name": "google_search",
-                "enabled": True,
-                "rules": {"action": "deny"},
-                "description": "운영팀의 외부 검색 차단",
-                "updated_at": datetime.now(timezone.utc).isoformat(),
-            }
-        ],
-    },
-    "customer-service": {
-        "tenant_id": "customer-service",
-        "description": "기본 고객센터 테넌트 룰셋",
-        "groups": [
-            {
-                "id": "g_cs",
-                "name": "CS 팀",
-                "description": "고객 문의 대응",
-                "members": ["cs1@a2a.com", "cs2@a2a.com"],
-            }
-        ],
-        "access_controls": [
-            {
-                "ruleset_id": "cs_prompt_validation",
-                "group_id": "g_cs",
-                "type": "prompt_validation",
-                "enabled": True,
-                "rules": {
-                    "blocked_keywords": ["refund all", "full export", "delete db"]
-                },
-                "description": "과도한 프롬프트 요청 제한",
-                "updated_at": datetime.now(timezone.utc).isoformat(),
-            }
-        ],
-    },
 }
 
 

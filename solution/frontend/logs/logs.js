@@ -40,6 +40,7 @@ function startApp() {
   setupTabs();
   setupFilters();
   setupModal();
+  setupExportButtons();
   fetchLogs();
 
   // 드롭다운 외부 클릭 시 닫기
@@ -73,6 +74,46 @@ function setupTabs() {
 
   const refreshRegBtn = document.getElementById("refresh-registry");
   if (refreshRegBtn) refreshRegBtn.onclick = () => fetchLogs();
+}
+
+function setupExportButtons() {
+  const exportAgentBtn = document.getElementById("export-agent-csv");
+  if (exportAgentBtn) {
+    exportAgentBtn.onclick = () => {
+      const logs = getFilteredAgentLogs();
+      exportToCsv(
+        "agent-logs.csv",
+        ["시간", "에이전트/툴", "정책 유형", "메시지"],
+        logs.map((log) => [
+          formatTime(log.timestamp),
+          log.policy === "에이전트 접근"
+            ? log.target_name || ""
+            : `${log.agent_id} / ${log.tool_name || "-"}`,
+          log.policy,
+          log.message,
+        ])
+      );
+    };
+  }
+
+  const exportRegistryBtn = document.getElementById("export-registry-csv");
+  if (exportRegistryBtn) {
+    exportRegistryBtn.onclick = () => {
+      const logs = getFilteredRegistryLogs();
+      exportToCsv(
+        "registry-logs.csv",
+        ["시간", "요청자", "동작", "상태 코드", "검증 단계", "메시지"],
+        logs.map((log) => [
+          formatTime(log.timestamp),
+          log.actor,
+          log.method,
+          log.status,
+          log.fail_stage || "",
+          log.message,
+        ])
+      );
+    };
+  }
 }
 
 // =========================================================
@@ -401,15 +442,9 @@ function fillDropdownList(elementId, items) {
   });
 }
 
-// [수정] 레지스트리 렌더링 (다중 필터 적용)
-function renderRegistryView() {
-  const tbody = document.getElementById("tbody-registry");
-  const tmpl = document.getElementById("tmpl-registry-row");
-  tbody.innerHTML = "";
-
+function getFilteredRegistryLogs() {
   let logs = allLogs.filter((l) => l.source === "registry");
 
-  // 0. 기간(날짜·시간) 필터
   if (registryFilters.startDate) {
     logs = logs.filter(
       (l) =>
@@ -425,24 +460,20 @@ function renderRegistryView() {
     );
   }
 
-  // 1. 동작(Operation) 필터
   if (registryFilters.ops.length > 0) {
     logs = logs.filter((l) => registryFilters.ops.includes(l.method));
   }
 
-  // 2. 상태 코드(Status) 필터 (문자열 비교)
   if (registryFilters.statuses.length > 0) {
     logs = logs.filter((l) =>
       registryFilters.statuses.includes(String(l.status))
     );
   }
 
-  // 3. 검증 단계(Stage) 필터
   if (registryFilters.stages.length > 0) {
     logs = logs.filter((l) => registryFilters.stages.includes(l.fail_stage));
   }
 
-  // 4. 검색어 필터 (요청자, 메시지)
   if (registryFilters.query) {
     logs = logs.filter(
       (l) =>
@@ -450,6 +481,17 @@ function renderRegistryView() {
         l.message.toLowerCase().includes(registryFilters.query)
     );
   }
+
+  return logs;
+}
+
+// [수정] 레지스트리 렌더링 (다중 필터 적용)
+function renderRegistryView() {
+  const tbody = document.getElementById("tbody-registry");
+  const tmpl = document.getElementById("tmpl-registry-row");
+  tbody.innerHTML = "";
+
+  const logs = getFilteredRegistryLogs();
 
   // 카운트 표시
   document.getElementById("registry-count").textContent = logs.length + "건";
@@ -530,16 +572,7 @@ function updateToolDropdown(selectedAgentIds) {
 // =========================================================
 // 렌더링 로직
 // =========================================================
-function renderCurrentView() {
-  if (currentView === "view-agent") renderAgentView();
-  else renderRegistryView();
-}
-
-function renderAgentView() {
-  const tbody = document.getElementById("tbody-agent");
-  const tmpl = document.getElementById("tmpl-agent-row");
-  tbody.innerHTML = "";
-
+function getFilteredAgentLogs() {
   let logs = allLogs.filter((l) => l.source === "agent");
 
   if (agentFilters.startDate)
@@ -569,6 +602,21 @@ function renderAgentView() {
         l.user.toLowerCase().includes(agentFilters.query)
     );
   }
+
+  return logs;
+}
+
+function renderCurrentView() {
+  if (currentView === "view-agent") renderAgentView();
+  else renderRegistryView();
+}
+
+function renderAgentView() {
+  const tbody = document.getElementById("tbody-agent");
+  const tmpl = document.getElementById("tmpl-agent-row");
+  tbody.innerHTML = "";
+
+  const logs = getFilteredAgentLogs();
 
   document.getElementById("agent-count").textContent = logs.length + "건";
 
@@ -630,6 +678,33 @@ function openModal(data) {
     2
   );
   document.getElementById("log-modal").classList.remove("hidden");
+}
+
+function exportToCsv(filename, headers, rows) {
+  const csvLines = [];
+  if (headers && headers.length) {
+    csvLines.push(headers.map(toCsvValue).join(","));
+  }
+  rows.forEach((row) => {
+    csvLines.push(row.map(toCsvValue).join(","));
+  });
+
+  const csvContent = "\ufeff" + csvLines.join("\n");
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+function toCsvValue(value) {
+  const safeValue =
+    value === null || value === undefined ? "" : String(value).replace(/\"/g, '""');
+  return /[\",\n]/.test(safeValue) ? `"${safeValue}"` : safeValue;
 }
 
 // =========================================================
