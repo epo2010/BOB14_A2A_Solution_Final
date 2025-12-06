@@ -5,7 +5,7 @@ import os
 import re
 import urllib.error
 import urllib.request
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Any
 
 from flask import jsonify, request, g, Response
@@ -36,6 +36,11 @@ USER_REDIS_URL = (
 from ..core.tenants import TENANT_CHOICES
 
 
+def _get_kst_now():
+    """현재 한국 표준시(UTC+9)를 반환."""
+    kst = timezone(timedelta(hours=9))
+    return datetime.now(kst)
+
 def _append_registry_log(
     *,
     actor: str | None,
@@ -47,7 +52,7 @@ def _append_registry_log(
 ):
     """Append a registry-type log entry into data/redisDB/r-logs.json."""
     entry = {
-        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "timestamp": _get_kst_now().isoformat(),
         "actor": actor or "",
         "method": method,
         "status": status,
@@ -93,7 +98,7 @@ def _extract_tools_from_card(card: dict | None) -> list[str]:
     return sorted(tools)
 
 def _now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return _get_kst_now().isoformat()
 
 
 def _find_ruleset(rulesets: list[dict], ruleset_id: str):

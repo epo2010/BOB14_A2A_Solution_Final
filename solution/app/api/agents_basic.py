@@ -1,4 +1,9 @@
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
+
+def _get_kst_now():
+    """현재 한국 표준시(UTC+9)를 반환."""
+    kst = timezone(timedelta(hours=9))
+    return datetime.now(kst)
 
 from flask import jsonify, request, g
 
@@ -271,7 +276,7 @@ def update_agent_policy(agent_id):
     existing_policy = agent.get("policy", {})
     policy = _normalize_policy(body, existing_policy)
     agent["policy"] = policy
-    now = datetime.now(timezone.utc).isoformat()
+    now = _get_kst_now().isoformat()
     agent["update_ts"] = now
     agent["updated_at"] = now
 

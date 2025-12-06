@@ -1,7 +1,12 @@
 import copy
 import os
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
+
+def _get_kst_now():
+    """현재 한국 표준시(UTC+9)를 반환."""
+    kst = timezone(timedelta(hours=9))
+    return datetime.now(kst)
 
 # --- 프로젝트 루트의 solution/data 디렉터리 경로 ---
 _ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
@@ -222,9 +227,9 @@ def _normalize_registry_log_entry(entry: dict) -> dict:
     if not isinstance(entry, dict):
         return {}
     try:
-        now_iso = datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
+        now_iso = _get_kst_now().isoformat()
     except Exception:
-        now_iso = datetime.utcnow().isoformat() + 'Z'
+        now_iso = datetime.now().isoformat()
 
     # source 판별: 명시적으로 지정되었거나 에이전트 관련 필드가 있으면 agent
     source = entry.get('source', '')
@@ -309,9 +314,9 @@ def _normalize_agent_log_entry(entry: dict) -> dict:
     if not isinstance(entry, dict):
         return {}
     try:
-        now_iso = datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
+        now_iso = _get_kst_now().isoformat()
     except Exception:
-        now_iso = datetime.utcnow().isoformat() + 'Z'
+        now_iso = datetime.now().isoformat()
 
     raw_status = entry.get('status')
     try:
