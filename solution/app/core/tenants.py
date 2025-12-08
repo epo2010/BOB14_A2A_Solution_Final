@@ -80,6 +80,7 @@ def extract_tenants(raw: object) -> List[str]:
 def _tenant_api_urls() -> List[str]:
     candidates = [
         os.getenv("TENANT_API_URL"),
+        "http://jwt-server:8000",
         "http://host.docker.internal:8000",
         "http://localhost:8000",
     ]

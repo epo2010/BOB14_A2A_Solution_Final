@@ -21,6 +21,7 @@ _PRIMARY_TENANT_API = os.getenv("TENANT_API_URL", "http://localhost:8000")
 TENANT_API_URLS: list[str] = []
 for url in (
     _PRIMARY_TENANT_API,
+    "http://jwt-server:8000",
     "http://host.docker.internal:8000",
     "http://localhost:8000",
 ):
@@ -563,12 +564,12 @@ def create_group():
         )
         return jsonify({"error": "tenant_id and id are required"}), 400
 
-    # ???? ??? ?? ??
+    # 테넌트가 없으면 생성
     try:
-        existing = _fetch_json(f"{TENANT_API_URL}/tenants") or []
+        existing = _tenant_fetch_json("/tenants") or []
         if not any(t.get("id") == tenant_id for t in existing):
-            _fetch_json(
-                f"{TENANT_API_URL}/tenants",
+            _tenant_fetch_json(
+                "/tenants",
                 method="POST",
                 body=json.dumps(
                     {
@@ -590,10 +591,9 @@ def create_group():
         )
         return jsonify({"error": f"failed to ensure tenant: {e}"}), 502
 
-    url = f"{TENANT_API_URL}/tenants/{tenant_id}/groups"
     try:
-        created = _fetch_json(
-            url,
+        created = _tenant_fetch_json(
+            f"/tenants/{tenant_id}/groups",
             method="POST",
             body=json.dumps(
                 {"id": group_id, "name": name or group_id, "description": description}

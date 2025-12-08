@@ -9,14 +9,16 @@ services:
     env_file:
       - .env
     environment:
-      REDIS_URL: ${REDIS_URL:-redis://redis:6381/0}
-      JWT_REDIS_URL: ${JWT_REDIS_URL:-redis://host.docker.internal:6381/0}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      JWT_REDIS_URL: ${JWT_REDIS_URL:-redis://jwt-redis:6379/0}
       PORT: "3000"
       USERME_DIRECT_URL: ${USERME_DIRECT_URL:-http://host.docker.internal:8000/users/me}
+      TENANT_API_URL: ${TENANT_API_URL:-http://jwt-server:8000}
     volumes:
       - app_data:/app/data
     depends_on:
       - redis
+      - jwt-redis
     restart: unless-stopped
     extra_hosts:
       - "host.docker.internal:host-gateway"

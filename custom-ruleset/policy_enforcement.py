@@ -185,10 +185,11 @@ class PolicyEnforcementPlugin(BasePlugin):
                     raw_aid = rule.get("agent_id")
                     
                     if raw_aid:
-                        # [Strict Mode] agent_id를 있는 그대로 저장
+                        # [Strict Mode] agent_id를 있는 그대로 저장 + 변형된 별칭도 함께 저장
                         clean_aid = str(raw_aid).strip()
-                        valid_targets.add(clean_aid)
-                        
+                        variants = self._id_variants(clean_aid)
+                        valid_targets.update(variants)
+
                         tools = rule.get("allowed_tools", [])
                         if clean_aid in merged_agent_map:
                             existing_tools = set(merged_agent_map[clean_aid]["allowed_tools"])
@@ -232,13 +233,17 @@ class PolicyEnforcementPlugin(BasePlugin):
         # 1. [자기 식별] Strict Match (대소문자 구분)
         my_id_strict = self.agent_id.strip()
 
-        my_rule = next(
-            (
-                item for item in allowed_list 
-                if str(item.get("agent_id", "")).strip() == my_id_strict
-            ), 
-            None
-        )
+        def _find_rule():
+            for item in allowed_list:
+                aid = str(item.get("agent_id", "")).strip()
+                if not aid:
+                    continue
+                variants = self._id_variants(aid)  # 다양한 별칭(풀 id, #agent 이후, 끝 토큰)으로 허용 체크
+                if my_id_strict in variants:
+                    return item
+            return None
+
+        my_rule = _find_rule()
 
         if not my_rule:
             return f"Access Denied: Agent '{self.agent_id}' is not defined in the policy."
@@ -255,15 +260,32 @@ class PolicyEnforcementPlugin(BasePlugin):
             if not target_agent:
                 return "Missing 'agent_name' argument."
             
-            # [수정됨] .lower() 제거! 입력된 타겟 이름 그대로 비교 (Strict Mode)
+            # [수정됨] 입력된 타겟 이름 그대로 + 별칭 비교
             target_strict = str(target_agent).strip()
-            
+            variants = self._id_variants(target_strict)
+
             valid_targets = policy.get("_valid_targets", set())
             
-            if target_strict not in valid_targets:
+            if variants.isdisjoint(valid_targets):
                 return f"Access Denied: Target '{target_agent}' is not a valid agent in this tenant."
 
         return None
+
+    @staticmethod
+    def _id_variants(agent_id: str) -> set[str]:
+        """에이전트 식별자 매칭을 위해 가능한 별칭 집합을 만든다."""
+        variants = set()
+        aid = (agent_id or "").strip()
+        if not aid:
+            return variants
+        variants.add(aid)
+        # '#agent:' 이후만 추출
+        if "#agent:" in aid:
+            variants.add(aid.split("#agent:", 1)[-1])
+        # ':' 기준 마지막 토큰
+        if ":" in aid:
+            variants.add(aid.split(":")[-1])
+        return variants
     
     async def before_model_callback(
         self,
