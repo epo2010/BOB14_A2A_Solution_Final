@@ -124,11 +124,12 @@ def ensure_seed():
                 with open(RULESETS_FILE, 'w', encoding='utf-8') as dst:
                     json.dump(data, dst, ensure_ascii=False, indent=2)
             else:
+                # 기본 시드 대신 빈 리스트로 생성해 초기 상태에서는 아무것도 노출하지 않는다.
                 with open(RULESETS_FILE, 'w', encoding='utf-8') as f:
-                    json.dump(DEFAULT_RULESETS, f, ensure_ascii=False, indent=2)
+                    json.dump([], f, ensure_ascii=False, indent=2)
         except Exception:
             with open(RULESETS_FILE, 'w', encoding='utf-8') as f:
-                json.dump(DEFAULT_RULESETS, f, ensure_ascii=False, indent=2)
+                json.dump([], f, ensure_ascii=False, indent=2)
 
 
 def load_json(path: str, default):
