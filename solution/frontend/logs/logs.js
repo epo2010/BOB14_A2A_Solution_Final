@@ -25,6 +25,19 @@ const registryFilters = {
 
 let currentView = "view-agent";
 
+// 툴 이름 추출 헬퍼 (로그 키 다양성 대응)
+function getToolName(log = {}) {
+  return (
+    log.tool_name ||
+    log.tool ||
+    log.toolId ||
+    log.toolid ||
+    (log.tool_args && log.tool_args.tool_name) ||
+    (log.extra && log.extra.tool_name) ||
+    ""
+  );
+}
+
 // =========================================================
 // 초기화 및 이벤트 리스너
 // =========================================================
@@ -351,6 +364,14 @@ async function fetchLogs() {
       const resp = await fetch("/api/logs");
       if (!resp.ok) throw new Error("failed to load logs");
       allLogs = await resp.json();
+      // tool_name 필드가 비어있을 경우 다른 키에서 보강
+      allLogs = allLogs.map((log) => {
+        const t = getToolName(log);
+        if (t && !log.tool_name) {
+          return { ...log, tool_name: t };
+        }
+        return log;
+      });
     } catch (e) {
       console.error("logs fetch failed, using mock data", e);
       allLogs = generateMockData(30);
@@ -420,18 +441,30 @@ function populateRegistryDropdowns() {
   const regLogs = allLogs.filter((l) => l.source === "registry");
 
   // 1. 동작 (Operation)
-  const ops = new Set(regLogs.map((l) => l.method));
+  const ops = new Set(
+    regLogs
+      .map((l) => (l.method || "").trim())
+      .filter((m) => m.length > 0)
+  );
   fillDropdownList("dropdown-reg-op", Array.from(ops).sort());
 
   // 2. 상태 코드 (Status Code)
-  const statuses = new Set(regLogs.map((l) => l.status));
+  const statuses = new Set(
+    regLogs
+      .map((l) => l.status)
+      .filter((s) => s !== undefined && s !== null && String(s).trim() !== "")
+  );
   fillDropdownList(
     "dropdown-reg-status",
     Array.from(statuses).sort((a, b) => a - b)
   );
 
   // 3. 검증 단계 (Stage)
-  const stages = new Set(regLogs.map((l) => l.fail_stage));
+  const stages = new Set(
+    regLogs
+      .map((l) => (l.fail_stage || "").trim())
+      .filter((s) => s.length > 0)
+  );
   fillDropdownList("dropdown-reg-stage", Array.from(stages).sort());
 
   // 초기화 시 전체 선택 상태가 아니므로 필터 배열 비우기 (또는 전체 선택 처리)
@@ -531,15 +564,15 @@ function renderRegistryView() {
 
   // 행 렌더링
   logs.forEach((log) => {
-    const clone = tmpl.content.cloneNode(true);
-    clone.querySelector(".col-time").textContent = formatTime(log.timestamp);
-    clone.querySelector(".col-actor").textContent = log.actor;
-    clone.querySelector(".col-method").textContent = log.method;
+      const clone = tmpl.content.cloneNode(true);
+      clone.querySelector(".col-time").textContent = formatTime(log.timestamp);
+      clone.querySelector(".col-actor").textContent = log.actor;
+      clone.querySelector(".col-method").textContent = log.method;
 
-    const statusCell = clone.querySelector(".col-status");
-    statusCell.textContent = log.status;
-    statusCell.style.color = getStatusColor(log.status);
-    statusCell.style.fontWeight = "bold";
+      const statusCell = clone.querySelector(".col-status");
+      statusCell.textContent = log.status;
+      statusCell.style.color = getStatusColor(log.status);
+      statusCell.style.fontWeight = "bold";
 
     clone.querySelector(".col-stage").textContent = log.fail_stage || "-";
     clone.querySelector(".col-msg").textContent = log.message;
@@ -566,12 +599,13 @@ function updateToolDropdown(selectedAgentIds) {
 
   const tools = new Set();
   allLogs.forEach((l) => {
+    const toolName = getToolName(l).trim();
     if (
       l.source === "agent" &&
       selectedAgentIds.includes(l.agent_id) &&
-      l.tool_name
+      toolName
     ) {
-      tools.add(l.tool_name);
+      tools.add(toolName);
     }
   });
 
@@ -616,7 +650,7 @@ function getFilteredAgentLogs() {
     logs = logs.filter((l) => agentFilters.agentIds.includes(l.agent_id));
   }
   if (agentFilters.toolNames.length > 0) {
-    logs = logs.filter((l) => agentFilters.toolNames.includes(l.tool_name));
+    logs = logs.filter((l) => agentFilters.toolNames.includes(getToolName(l)));
   }
   // policy_type 기반 필터링 (policy_enforcement.py 스키마 호환)
   if (agentFilters.policies.length > 0) {
