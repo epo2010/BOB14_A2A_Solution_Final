@@ -7,6 +7,9 @@ let cachedAgents = [];
 let cachedRulesets = [];
 let cachedLogs = [];
 let isLoadingLogs = false;  // 중복 요청 방지
+let currentFlow = null;     // 현재 그래프 데이터 스냅샷
+
+const HIDDEN_EXTERNAL_STORAGE_KEY = "agentFlowHiddenExternals";
 
 window.addEventListener('DOMContentLoaded', () => {
   setupControls();
@@ -25,7 +28,11 @@ window.addEventListener('DOMContentLoaded', () => {
 function setupControls() {
   const refreshFlowButton = document.getElementById('refresh-flow');
   if (refreshFlowButton) {
-    refreshFlowButton.addEventListener('click', () => loadAgentFlow(true));
+    refreshFlowButton.addEventListener('click', () => {
+      resetHiddenExternalNodes();         // UI 새로고침 시 숨김 초기화
+      mutedExternalHighlightIds.clear();  // 클릭으로 지운 하이라이트도 초기화
+      loadAgentFlow(true);
+    });
   }
 
   const refreshDashboardButton = document.getElementById('refresh-dashboard');
@@ -721,9 +728,40 @@ let graphContainer = null;
 let currentSimulation = null;
 let currentTransform = null;  // 현재 zoom/pan 상태 저장
 let nodePositions = new Map();  // 노드 위치 저장
+let hiddenExternalNodeIds = new Set(); // 사용자가 숨긴 external 노드
+let mutedExternalHighlightIds = new Set(); // 클릭으로 하이라이트 제거된 external 노드
+
+// 로컬스토리지에서 숨김 상태 복원
+try {
+  const rawHidden = localStorage.getItem(HIDDEN_EXTERNAL_STORAGE_KEY);
+  if (rawHidden) {
+    const parsed = JSON.parse(rawHidden);
+    if (Array.isArray(parsed)) {
+      hiddenExternalNodeIds = new Set(parsed);
+    }
+  }
+} catch (e) {
+  console.warn("Failed to restore hidden external nodes", e);
+}
+
+function persistHiddenExternalNodes() {
+  try {
+    localStorage.setItem(HIDDEN_EXTERNAL_STORAGE_KEY, JSON.stringify([...hiddenExternalNodeIds]));
+  } catch (e) {
+    console.warn("Failed to persist hidden external nodes", e);
+  }
+}
+
+function resetHiddenExternalNodes() {
+  hiddenExternalNodeIds.clear();
+  persistHiddenExternalNodes();
+}
 
 function renderAgentFlowGraph(flow) {
   try {
+    if (flow) {
+      currentFlow = flow; // 최신 데이터 저장
+    }
     const svgElement = document.getElementById('agent-flow-graph');
     const tooltip = document.getElementById('graph-tooltip');
     if (!svgElement || !tooltip) {
@@ -754,7 +792,7 @@ function renderAgentFlowGraph(flow) {
   graphSvg = svg;
 
   // 노드 생성 시 저장된 위치 복원 (위치가 있으면 고정)
-  const nodes = flow.nodes?.map((node) => {
+  let nodes = flow.nodes?.map((node) => {
     const savedPos = nodePositions.get(node.id);
     if (savedPos && savedPos.x !== undefined && savedPos.y !== undefined) {
       // 저장된 위치가 있으면 해당 위치로 고정
@@ -768,7 +806,14 @@ function renderAgentFlowGraph(flow) {
     }
     return { ...node };
   }) || [];
-  const links = flow.edges?.map((edge) => ({ ...edge })) || [];
+  let links = flow.edges?.map((edge) => ({ ...edge })) || [];
+
+  // 사용자가 숨긴 external 노드는 필터링
+  if (hiddenExternalNodeIds.size > 0) {
+    nodes = nodes.filter(n => !(n.type === 'external' && hiddenExternalNodeIds.has(n.id)));
+    const visibleNodeIds = new Set(nodes.map(n => n.id));
+    links = links.filter(edge => visibleNodeIds.has(edge.source) && visibleNodeIds.has(edge.target));
+  }
 
   // Create main container for all graph elements FIRST
   graphContainer = svg.append('g').attr('class', 'graph-main');
@@ -872,6 +917,9 @@ function renderAgentFlowGraph(flow) {
     .enter()
     .append('g')
     .attr('class', 'flow-node')
+    .attr('data-node-type', (d) => d.type || 'unknown')
+    .classed('external-node', (d) => d.type === 'external')
+    .classed('external-dimmed', (d) => d.type === 'external' && mutedExternalHighlightIds.has(d.id))
     .style('cursor', 'grab')
     .call(
       d3.drag()
@@ -919,6 +967,10 @@ function renderAgentFlowGraph(flow) {
     .on('mouseout', hideTooltip)
     .on('click', (event, d) => {
       event.stopPropagation();
+      if (d.type === 'external') {
+        mutedExternalHighlightIds.add(d.id);
+        d3.select(event.currentTarget.parentNode).classed('external-dimmed', true);
+      }
       showNodeDetailPanel(d, links);
     })
     .on('dblclick', (event, d) => {
@@ -1200,6 +1252,25 @@ function showNodeDetailPanel(node, links) {
   const closeBtn = document.getElementById('panel-close');
   if (closeBtn) {
     closeBtn.onclick = hideNodeDetailPanel;
+  }
+
+   // 외부 노드 숨기기 버튼
+  const hideBtn = document.getElementById('panel-hide-node');
+  if (hideBtn) {
+    if (node.type === 'external') {
+      hideBtn.style.display = 'inline-flex';
+      hideBtn.onclick = () => {
+        hiddenExternalNodeIds.add(node.id);
+        persistHiddenExternalNodes();
+        hideNodeDetailPanel();
+        if (currentFlow) {
+          renderAgentFlowGraph(currentFlow);
+        }
+      };
+    } else {
+      hideBtn.style.display = 'none';
+      hideBtn.onclick = null;
+    }
   }
 }
 
