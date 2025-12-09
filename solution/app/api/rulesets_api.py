@@ -8,7 +8,7 @@ import urllib.request
 from datetime import datetime, timezone, timedelta
 from typing import Any
 
-from flask import jsonify, request, g, Response
+from flask import jsonify, request, Response
 
 from . import api_bp
 from ..core import repo
@@ -41,34 +41,6 @@ def _get_kst_now():
     """현재 한국 표준시(UTC+9)를 반환."""
     kst = timezone(timedelta(hours=9))
     return datetime.now(kst)
-
-def _append_registry_log(
-    *,
-    actor: str | None,
-    method: str,
-    status: int,
-    fail_stage: str,
-    message: str,
-    extra: dict | None = None,
-):
-    """Append a registry-type log entry into data/redisDB/r-logs.json."""
-    entry = {
-        "timestamp": _get_kst_now().isoformat(),
-        "actor": actor or "",
-        "method": method,
-        "status": status,
-        "fail_stage": fail_stage,
-        "message": message,
-        "source": "registry",
-    }
-    if extra:
-        entry["extra"] = extra
-    try:
-        repo.append_registry_log(entry)
-    except Exception:
-        # Logging failures should not block API flow
-        pass
-
 
 def _extract_tools_from_card(card: dict | None) -> list[str]:
     """카드 확장/스킬 정보에서 tool_id 목록을 추출."""
@@ -551,17 +523,8 @@ def create_group():
     group_id = (body.get("id") or "").strip()
     name = body.get("name")
     description = body.get("description")
-    actor = getattr(g, "jwt", {}).get("sub") or ""
 
     if not tenant_id or not group_id:
-        _append_registry_log(
-            actor=actor,
-            method="CreateGroup",
-            status=400,
-            fail_stage="validate",
-            message="tenant_id and id are required",
-            extra={"tenant_id": tenant_id, "group_id": group_id},
-        )
         return jsonify({"error": "tenant_id and id are required"}), 400
 
     # 테넌트가 없으면 생성
@@ -581,14 +544,6 @@ def create_group():
                 headers={"Content-Type": "application/json"},
             )
     except Exception as e:
-        _append_registry_log(
-            actor=actor,
-            method="CreateGroup",
-            status=502,
-            fail_stage="tenant.ensure",
-            message=f"failed to ensure tenant: {e}",
-            extra={"tenant_id": tenant_id, "group_id": group_id},
-        )
         return jsonify({"error": f"failed to ensure tenant: {e}"}), 502
 
     try:
@@ -601,25 +556,9 @@ def create_group():
             headers={"Content-Type": "application/json"},
         )
     except Exception as e:
-        _append_registry_log(
-            actor=actor,
-            method="CreateGroup",
-            status=502,
-            fail_stage="group.create",
-            message=f"failed to create group: {e}",
-            extra={"tenant_id": tenant_id, "group_id": group_id},
-        )
         return jsonify({"error": f"failed to create group: {e}"}), 502
 
     created["tenant_id"] = tenant_id
-    _append_registry_log(
-        actor=actor,
-        method="CreateGroup",
-        status=201,
-        fail_stage="Success",
-        message="group created",
-        extra={"tenant_id": tenant_id, "group_id": group_id},
-    )
     return jsonify(created), 201
 
 

@@ -136,7 +136,8 @@ window.addEventListener("DOMContentLoaded", async () => {
   }
 });
 
-async function refreshAll() {
+async function refreshAll(options = {}) {
+  const { skipAgents = false } = options;
   try {
     allRulesets = await fetchJson(`${API_BASE}/api/rulesets`);
     allGroups = await fetchJson(`${API_BASE}/api/rulesets/groups`);
@@ -144,10 +145,12 @@ async function refreshAll() {
     allTenants = await fetchJson(`${API_BASE}/api/rulesets/tenants`).catch(
       () => []
     );
-    try {
-      allAgents = await fetchJson(`${API_BASE}/api/agents`);
-    } catch (err) {
-      allAgents = [];
+    if (!skipAgents) {
+      try {
+        allAgents = await fetchJson(`${API_BASE}/api/agents`);
+      } catch (err) {
+        allAgents = [];
+      }
     }
 
     renderGroupList();
@@ -254,7 +257,8 @@ function initGroupActions() {
       )
         .then(async () => {
           selectedGroupId = null;
-          await refreshAll();
+          // 그룹 삭제 직후에도 에이전트 목록 재조회(및 서버 로그)를 건너뛴다.
+          await refreshAll({ skipAgents: true });
         })
         .catch((err) => alert(`그룹 삭제에 실패했습니다: ${err.message}`));
     });
@@ -373,7 +377,8 @@ function initGroupActions() {
           }),
         });
         closeModal("group-modal");
-        await refreshAll();
+        // 그룹 생성 직후에는 에이전트 목록 재조회(및 서버 로그)를 건너뛴다.
+        await refreshAll({ skipAgents: true });
         if (created?.id) selectGroup(created.id);
       } catch (err) {
         alert(`그룹 생성에 실패했습니다: ${err.message}`);
