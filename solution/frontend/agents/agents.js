@@ -372,12 +372,6 @@ function showAgentPlaceholder(message) {
 async function deleteAgent(agent, triggerButton, statusElement) {
   if (!agent || !agent.agent_id) return;
 
-  if (!verifiedToken) {
-    setAgentActionStatus(statusElement, '관리자 JWT를 먼저 확인해주세요.', true);
-    openAdminTokenModal('delete');
-    return;
-  }
-
   const label = agent.name || agent.agent_id;
   if (!confirm(`에이전트 ${label}을(를) 삭제할까요?`)) return;
 
@@ -391,7 +385,6 @@ async function deleteAgent(agent, triggerButton, statusElement) {
   try {
     const response = await fetch(`${API_BASE}/api/agents/${encodeURIComponent(agent.agent_id)}`, {
       method: 'DELETE',
-      headers: { Authorization: verifiedToken },
     });
     if (!response.ok) {
       const err = await response.json().catch(() => ({}));
@@ -414,65 +407,13 @@ async function deleteAgent(agent, triggerButton, statusElement) {
   }
 }
 
-let tokenPurpose = null; // 'add' | 'delete' | null
-
-function openAdminTokenModal(purpose = 'add') {
-  tokenPurpose = purpose;
-  const tokenModal = document.getElementById('token-modal');
-  if (!tokenModal) return;
-
-  tokenModal.classList.remove('hidden');
-  const input = tokenModal.querySelector('#token-input');
-  const status = tokenModal.querySelector('#token-status');
-  if (status) {
-    status.textContent = '';
-    status.classList.remove('error');
-  }
-  if (input) {
-    input.value = '';
-    input.focus();
-    if (typeof input.select === 'function') {
-      input.select();
-    }
-  }
-}
-
 function setupAddAgentModal() {
   const modal = document.getElementById('add-agent-modal');
   const closeButton = document.getElementById('close-add-agent-modal');
   const form = document.getElementById('add-agent-form');
   const openButton = document.getElementById('open-add-agent-btn');
-  const tokenModal = document.getElementById('token-modal');
-  const tokenClose = document.getElementById('token-modal-close');
-  const tokenForm = document.getElementById('token-form');
 
-  openButton?.addEventListener('click', () => openAdminTokenModal('add'));
-
-  tokenClose?.addEventListener('click', () => {
-    tokenModal?.classList.add('hidden');
-  });
-
-  tokenModal?.addEventListener('click', (event) => {
-    if (event.target === tokenModal) {
-      tokenModal.classList.add('hidden');
-    }
-  });
-
-  tokenForm?.addEventListener('submit', async (event) => {
-    event.preventDefault();
-    const input = tokenForm.querySelector('#token-input');
-    const status = tokenForm.querySelector('#token-status');
-    if (!input || !status) return;
-    const rawToken = input.value.trim();
-    if (!rawToken) {
-      status.textContent = '토큰을 입력해야 합니다.';
-      status.classList.add('error');
-      return;
-    }
-    status.textContent = '토큰 확인 중...';
-    status.classList.remove('error');
-    await verifyAdminToken(rawToken, tokenModal);
-  });
+  openButton?.addEventListener('click', () => showAddAgentModal());
 
   closeButton?.addEventListener('click', () => closeAddAgentModal());
   modal?.addEventListener('click', (event) => {
@@ -588,35 +529,4 @@ function updateModalStatus(element, message, isError = false) {
   if (!element) return;
   element.textContent = message;
   element.classList.toggle('error', Boolean(isError));
-}
-
-let verifiedToken = null;
-
-async function verifyAdminToken(rawToken, tokenModal) {
-  const tokenValue = rawToken.toLowerCase().startsWith('bearer ')
-    ? rawToken
-    : `Bearer ${rawToken}`;
-
-  try {
-    const response = await fetch(`${API_BASE}/api/verify-admin`, {
-      method: 'GET',
-      headers: { Authorization: tokenValue },
-    });
-    if (!response.ok) {
-      const err = await response.json().catch(() => ({}));
-      throw new Error(err.error || '관리자 토큰이 유효하지 않습니다.');
-    }
-    verifiedToken = tokenValue;
-    tokenModal?.classList.add('hidden');
-    if (tokenPurpose === 'add') {
-      showAddAgentModal();
-    }
-    tokenPurpose = null;
-  } catch (error) {
-    const status = tokenModal?.querySelector('#token-status');
-    if (status) {
-      status.textContent = error.message || '토큰 확인에 실패했습니다.';
-      status.classList.add('error');
-    }
-  }
 }

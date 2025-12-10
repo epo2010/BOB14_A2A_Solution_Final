@@ -4,6 +4,14 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ATS - 대시보드</title>
+    <script>
+      (function () {
+        const token = localStorage.getItem("atsAuthToken");
+        if (!token) {
+          window.location.replace("/login");
+        }
+      })();
+    </script>
     <link rel="stylesheet" href="style.css" />
     <link
       rel="stylesheet"
@@ -803,6 +811,7 @@
         }
       }
     </style>
+    <script src="auth.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" defer></script>
     <script src="dashboard.js" defer></script>
@@ -822,6 +831,7 @@
           <a href="agents/agents.html" class="nav-link">에이전트</a>
           <a href="logs/logs.html" class="nav-link">로그</a>
           <a href="rulesets/rulesets.html" class="nav-link">룰셋</a>
+          <a href="#" class="nav-link" data-logout>로그아웃</a>
         </nav>
       </header>
 
@@ -1015,5 +1025,9 @@
         </div>
       </main>
     </div>
+    <script src="../auth.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" defer></script>
+    <script src="dashboard.js" defer></script>
   </body>
 </html>

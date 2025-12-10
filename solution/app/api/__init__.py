@@ -13,3 +13,4 @@ from . import search_agents  # noqa: E402,F401
 from . import agents_basic  # noqa: E402,F401
 from . import logs_api  # noqa: E402,F401
 from . import rulesets_api  # noqa: E402,F401
+from . import auth_login  # noqa: E402,F401

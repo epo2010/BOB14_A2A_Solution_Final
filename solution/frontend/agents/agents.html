@@ -4,12 +4,21 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ATS - 에이전트</title>
+    <script>
+      (function () {
+        const token = localStorage.getItem("atsAuthToken");
+        if (!token) {
+          window.location.replace("/login");
+        }
+      })();
+    </script>
     <link rel="stylesheet" href="../style.css" />
     <link rel="stylesheet" href="/agents/style.css" />
     <link
       rel="stylesheet"
       href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap"
     />
+    <script src="../auth.js" defer></script>
     <script src="/agents/agents.js" defer></script>
   </head>
   <body>
@@ -27,6 +36,7 @@
           <a href="/agents" class="nav-link active">에이전트</a>
           <a href="/logs" class="nav-link">로그</a>
           <a href="/rulesets" class="nav-link">룰셋</a>
+          <a href="#" class="nav-link" data-logout>로그아웃</a>
         </nav>
       </header>
 
@@ -193,28 +203,5 @@
       </button>
     </div>
 
-    <div class="modal-overlay hidden" id="token-modal">
-      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="token-modal-title">
-        <div class="modal-header">
-          <h3 id="token-modal-title">관리자 JWT 입력</h3>
-          <button class="btn-secondary" id="token-modal-close" type="button">닫기</button>
-        </div>
-        <div class="modal-content">
-          <form id="token-form" class="modal-form">
-            <label for="token-input">관리자 JWT 토큰</label>
-            <input
-              type="password"
-              id="token-input"
-              placeholder="Bearer 토큰을 붙여넣어주세요"
-              autocomplete="off"
-            />
-            <div class="form-actions">
-              <span id="token-status" class="status-message" role="status"></span>
-              <button type="submit" class="btn-primary">검증</button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
   </body>
 </html>  

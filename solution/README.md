@@ -23,12 +23,18 @@ pip install -r requirements.txt       # 또는 solution/requirements.txt
 # 백엔드 실행 (기본: http://127.0.0.1:3000)
 python -m solution.app.main
 ```
-
 Docker Compose:
 ```bash
 docker compose up -d --build
 # 앱: http://localhost:3000
 ```
+
+## 로그인 흐름
+- `/login` 페이지에서 `jwt-server`에 등록된 자격 증명(기본적으로 `admin@example.com/admin123`, `user@example.com/password123`, `user2@example.com/password1234`)을 입력하면 토큰을 받아 대시보드로 이동합니다.
+- 별도의 토큰을 갖고 있다면 해당 페이지에서 즉시 붙여넣어 저장해도 됩니다.
+- 로그인에 성공하면 JWT가 로컬 스토리지에 보관되고 각 API 요청에 `Authorization: Bearer <token>` 헤더가 자동으로 추가됩니다.
+- 인증 서버 주소(`JWT_TOKEN_URL`, `TENANT_API_URL` 등)를 환경 변수로 재정의하면 프록시가 연결을 시도하는 엔드포인트를 조정할 수 있습니다.
+- 로그인 후에는 대시보드, 에이전트, 로그, 룰셋 페이지에서 JWT 세션이 유지되어야만 데이터가 보여집니다.
 
 ## 데이터 저장 위치
 - 에이전트: `data/redisDB/agents.json`
