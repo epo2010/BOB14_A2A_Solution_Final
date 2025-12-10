@@ -28,6 +28,20 @@ def create_app() -> Flask:
 
     ensure_files()
 
+    def _dashboard_target():
+        candidates = [
+            os.path.join(app.static_folder, 'dashboard', 'dashboard.html'),
+            os.path.join(app.static_folder, 'dashboard.html'),
+        ]
+        for candidate in candidates:
+            if os.path.exists(candidate):
+                return candidate
+        return os.path.join(app.static_folder, 'index.html')
+
+    def _serve_dashboard():
+        target = _dashboard_target()
+        return send_from_directory(os.path.dirname(target), os.path.basename(target))
+
     @app.after_request
     def _force_utf8(resp):
         try:
@@ -42,16 +56,18 @@ def create_app() -> Flask:
 
     @app.get('/')
     def root():
-        if os.path.exists(os.path.join(app.static_folder, 'dashboard.html')):
-            return send_from_directory(app.static_folder, 'dashboard.html')
-        return send_from_directory(app.static_folder, 'index.html')
+        return _serve_dashboard()
 
     @app.get('/dashboard')
     def dashboard_page():
-        target = os.path.join(app.static_folder, 'dashboard.html')
+        return _serve_dashboard()
+
+    @app.get('/login')
+    def login_page():
+        target = os.path.join(app.static_folder, 'login.html')
         if os.path.exists(target):
-            return send_from_directory(app.static_folder, 'dashboard.html')
-        return send_from_directory(app.static_folder, 'index.html')
+            return send_from_directory(os.path.dirname(target), os.path.basename(target))
+        return _serve_dashboard()
 
     @app.get('/agents')
     def agents_page():

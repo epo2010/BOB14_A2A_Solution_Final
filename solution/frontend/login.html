@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ATS 로그인</title>
+    <link rel="stylesheet" href="style.css" />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap"
+    />
+    <script src="auth.js" defer></script>
+    <script src="login.js" defer></script>
+  </head>
+  <body>
+    <div class="login-shell">
+      <div class="login-card">
+        <div>
+          <img src="/Attager.png" alt="ATS Logo" class="logo-img" style="height: 52px;" />
+          <h1>ATS Threat Dashboard</h1>
+          <p>
+            JWT 인증을 통해 모든 데이터 API에 안전하게 접근합니다. 기본 제공된 인증 정보를
+            사용하거나, 직접 JWT를 붙여넣고 바로 확인해보세요.
+          </p>
+        </div>
+
+        <form id="login-form">
+          <label for="email">이메일</label>
+          <input type="email" name="email" id="email" placeholder="user@example.com" autocomplete="username" />
+          <label for="password">비밀번호</label>
+          <input
+            type="password"
+            name="password"
+            id="password"
+            placeholder="********"
+            autocomplete="current-password"
+          />
+          <button type="submit" class="btn btn-primary">로그인</button>
+        </form>
+
+        <div class="login-status" id="login-status">
+          기본 사용자: user@example.com / password123 · 관리자: admin@example.com / admin123
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
