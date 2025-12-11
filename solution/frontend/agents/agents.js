@@ -6,6 +6,18 @@ const state = {
   agentCache: new Map(),
 };
 
+function getAuthToken() {
+  try {
+    if (window.atsAuth?.getToken) {
+      return (window.atsAuth.getToken() || '').trim();
+    }
+    const stored = localStorage.getItem('atsAuthToken') || '';
+    return stored.trim();
+  } catch {
+    return '';
+  }
+}
+
 window.addEventListener('DOMContentLoaded', () => {
   initialise();
 });
