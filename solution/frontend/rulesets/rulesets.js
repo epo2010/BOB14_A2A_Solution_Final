@@ -102,6 +102,26 @@ async function refreshAll(options = {}) {
   }
 }
 
+async function refreshAgentPolicy(agentId, tenantId) {
+  if (!agentId) {
+    return;
+  }
+
+  const payload = tenantId ? { tenant: tenantId } : {};
+  try {
+    await fetchJson(
+      `${API_BASE}/api/agents/${encodeURIComponent(agentId)}/refresh-policy`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      }
+    );
+  } catch (error) {
+    console.warn("Agent refresh failed:", error.message);
+  }
+}
+
 function selectGroup(groupId) {
   selectedGroupId = groupId;
   renderGroupList();
@@ -416,19 +436,20 @@ function renderGroupDetail(groupId) {
         : '<i class="fas fa-toggle-off"></i>';
       btn.onclick = async (e) => {
         e.stopPropagation();
-        try {
-          await fetchJson(
-            `${API_BASE}/api/rulesets/${encodeURIComponent(r.ruleset_id)}`,
-            {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ enabled: !r.enabled }),
-            }
-          );
-          refreshAll();
-        } catch (err) {
-          alert("상태 변경에 실패했습니다.");
-        }
+      try {
+        await fetchJson(
+          `${API_BASE}/api/rulesets/${encodeURIComponent(r.ruleset_id)}`,
+          {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ enabled: !r.enabled }),
+          }
+        );
+        await refreshAgentPolicy(r.target_agent, r.tenant_id);
+        refreshAll();
+      } catch (err) {
+        alert("상태 변경에 실패했습니다.");
+      }
       };
       statusCell.appendChild(btn);
 
@@ -442,11 +463,12 @@ function renderGroupDetail(groupId) {
         .addEventListener("click", async () => {
           if (confirm("정책을 삭제하시겠습니까?")) {
             try {
-              await fetchJson(
-                `${API_BASE}/api/rulesets/${encodeURIComponent(r.ruleset_id)}`,
-                { method: "DELETE" }
-              );
-              refreshAll();
+          await fetchJson(
+            `${API_BASE}/api/rulesets/${encodeURIComponent(r.ruleset_id)}`,
+            { method: "DELETE" }
+          );
+          await refreshAgentPolicy(r.target_agent, r.tenant_id);
+          refreshAll();
             } catch (err) {
               alert("삭제에 실패했습니다.");
             }
@@ -738,28 +760,31 @@ function openRulesetForm(rule = null, context = {}) {
       }
     }
 
-    try {
-      if (rule && rule.ruleset_id) {
-        await fetchJson(
-          `${API_BASE}/api/rulesets/${encodeURIComponent(rule.ruleset_id)}`,
-          {
-            method: "PUT",
+      try {
+        if (rule && rule.ruleset_id) {
+          await fetchJson(
+            `${API_BASE}/api/rulesets/${encodeURIComponent(rule.ruleset_id)}`,
+            {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(data),
+            }
+          );
+        } else {
+          await fetchJson(`${API_BASE}/api/rulesets`, {
+            method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(data),
-          }
-        );
-      } else {
-        await fetchJson(`${API_BASE}/api/rulesets`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data),
-        });
+          });
+        }
+        if (data.target_agent) {
+          await refreshAgentPolicy(data.target_agent, data.tenant_id);
+        }
+        closeModal("ruleset-modal");
+        refreshAll();
+      } catch (err) {
+        alert("정책 저장에 실패했습니다.");
       }
-      closeModal("ruleset-modal");
-      refreshAll();
-    } catch (err) {
-      alert("정책 저장에 실패했습니다.");
-    }
   });
 
   body.appendChild(node);

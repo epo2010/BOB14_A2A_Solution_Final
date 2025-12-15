@@ -566,13 +566,6 @@ async function submitAddAgent(form) {
         : { card: payload }
       : {};
 
-  const tenants = Array.from(form.querySelectorAll('input[name="tenant"]:checked')).map(
-    (input) => input.value
-  );
-  if (tenants.length > 0) {
-    requestBody.tenants = tenants;
-  }
-
   const adminToken = window.atsAuth?.getToken?.();
   if (!adminToken) {
     updateModalStatus(status, '관리자 JWT 토큰을 먼저 확인하세요.', true);

@@ -77,10 +77,6 @@ def create_agent():
     if isinstance(body, dict):
         tenants = extract_tenants(body.get('tenants'))
 
-    if not tenants:
-        append_log('스키마 검증 실패 : tenant 선택 누락 (422 Unprocessable Entity)', False, status=422)
-        return jsonify({"error": 'TENANT_REQUIRED', "message": 'at least one tenant must be specified'}), 422
-
     # --- A2A JSON Schema (a2a.json) 검증 ---
     try :
         AGENT_CARD_SCHEMA.validate(card)
@@ -277,7 +273,6 @@ def create_agent():
     repo.save_agents(agents)
     append_log(f"에이전트 추가 성공 (201 Created): {name}", True)
     return jsonify({"agent": {"name": name, "status": 'Active', "card": card, "tenants": tenants}}), 201
-
 
 
 
