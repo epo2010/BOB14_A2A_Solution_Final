@@ -81,7 +81,7 @@
   const originalFetch = window.fetch.bind(window)
   let authErrorNotified = false
 
-  const isAuthFailureStatus = (status) => [401, 403, 498].includes(Number(status))
+  const isAuthFailureStatus = (status) => [401, 403, 404, 498].includes(Number(status))
 
   const shouldHandleAuthError = (input) => {
     try {
