@@ -95,6 +95,13 @@ def require_jwt():
         except Exception:
             pass
         return send_error(401, "INVALID_TOKEN", "Invalid or malformed token")
+    if status == 404:
+        try:
+            from .logging import append_log
+            append_log('인증 실패: 사용자 정보 없음 (404 Not Found)', False, status=404)
+        except Exception:
+            pass
+        return send_error(404, "USER_NOT_FOUND", "User information was not found")
     try:
         from .logging import append_log
         append_log(f'인증 실패: 토큰 서비스 오류 ({status})', False, status=status or 502)
