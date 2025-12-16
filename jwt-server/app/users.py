@@ -2,6 +2,7 @@ import json
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+
 from .auth import verify_password, hash_password, create_access_token, decode_access_token
 from .db import redis_client
 from .schemas import User, UserInDB, Token
@@ -9,27 +10,37 @@ from .schemas import User, UserInDB, Token
 router = APIRouter()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
+# 기본 시드 유저는 테넌트를 비워 둔다. 테넌트는 그룹에 추가될 때만 부여한다.
 DEFAULT_USER_CREDENTIALS = [
     {
         "email": "user2@example.com",
-        "tenant": "logistics",
-        "name": "물류 오퍼레이터",
-        "title": "운영 매니저",
-        "password": "password1234",
+        "name": "Logistics Staff",
+        "title": "Operations Manager",
+        "password": "pwd123",
     },
     {
         "email": "user@example.com",
-        "tenant": "customer-service",
-        "name": "고객 상담원",
-        "title": "CS 스페셜리스트",
-        "password": "password123",
+        "name": "Customer Support",
+        "title": "CS Specialist",
+        "password": "pwd123",
     },
     {
         "email": "admin@example.com",
-        "tenant": "logistics",
-        "name": "관리자",
+        "name": "Admin",
         "title": "Admin",
         "password": "admin123",
+    },
+        {
+        "email": "user3@example.com",
+        "name": "Hong Gil-dong",
+        "title": "Staff",
+        "password": "pwd123",
+    },
+            {
+        "email": "user4@example.com",
+        "name": "Lee Soon-shin",
+        "title": "Staff",
+        "password": "pwd123",
     },
 ]
 
@@ -46,13 +57,15 @@ def _seed_default_users():
     for user in DEFAULT_USER_CREDENTIALS:
         key = _user_key(user["email"])
         if redis_client.exists(key):
+            # 기존 시드 유저가 있으면 테넌트를 비워 초기 상태를 유지한다.
+            redis_client.hset(key, mapping={"tenant": _serialize_tenant([])})
             continue
 
         redis_client.hset(
             key,
             mapping={
                 "email": user["email"],
-                "tenant": _serialize_tenant(user["tenant"]),
+                "tenant": _serialize_tenant([]),
                 "name": user.get("name", ""),
                 "title": user.get("title", ""),
                 "hashed_password": hash_password(user["password"]),
@@ -72,6 +85,7 @@ def _deserialize_tenant(raw_value: str | None):
 
 _seed_default_users()
 
+
 def get_user(email: str):
     key = _user_key(email)
     user_data = redis_client.hgetall(key)
@@ -87,6 +101,7 @@ def get_user(email: str):
         hashed_password=user_data["hashed_password"],
     )
 
+
 def _normalize_tenants(value):
     if isinstance(value, str):
         return [value]
@@ -94,79 +109,77 @@ def _normalize_tenants(value):
         return [str(item) for item in value if isinstance(item, str)]
     return []
 
-# FastAPI에서 로그인용 토큰을 발급하는 엔드포인트
+
 @router.post("/token", response_model=Token)
 def login(form_data: OAuth2PasswordRequestForm = Depends()):
+    """패스워드 기반 로그인 후 JWT 발급."""
     user = get_user(form_data.username)
     if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invailid credentials")
-    
+            detail="Invailid credentials",
+        )
+
     access_token = create_access_token(subject=user.email, tenant=user.tenant)
     return {"access_token": access_token, "token_type": "bearer"}
 
 
-# 토큰 속에서 이메일로 사용자 정보를 찾아 리턴하는 엔드포인트
 @router.get("/users/me", response_model=User)
 def read_users_me(token: str = Depends(oauth2_scheme)):
+    """JWT로 사용자 정보를 조회한다. 테넌트가 없어도 통과."""
     payload = decode_access_token(token)
     if not payload:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token")
-    
+            detail="Invalid token",
+        )
+
     email: str | None = payload.get("sub")
     tenant_claim = payload.get("tenant")
     claim_tenants = _normalize_tenants(tenant_claim)
-    if not email or not claim_tenants:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Token missing identity claims")
-
-    user = get_user(email)
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found")
-    
-    # tenant 일치 검사를 완화: 토큰의 tenant는 로그인 시점의 정보이며,
-    # 이후 사용자의 그룹/테넌트가 변경될 수 있으므로 엄격한 일치 검사를 제거.
-    # 사용자 존재 여부만 확인하고, 현재 DB의 tenant 정보를 반환.
-    return user
-
-
-# 토큰 갱신 엔드포인트 (기존 토큰이 유효하면 새 토큰 발급)
-@router.post("/refresh", response_model=Token)
-def refresh_token(token: str = Depends(oauth2_scheme)):
-    """
-    현재 유효한 토큰을 새 토큰으로 갱신합니다.
-    토큰이 만료되기 전에 호출해야 합니다.
-    """
-    payload = decode_access_token(token)
-    if not payload:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired token",
-        )
-    
-    email: str | None = payload.get("sub")
-    tenant_claim = payload.get("tenant")
-    
     if not email:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Token missing identity claims",
         )
-    
-    # 사용자가 여전히 존재하는지 확인
+
     user = get_user(email)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found",
         )
-    
-    # 새 토큰 발급 (사용자의 현재 tenant 정보 사용)
+
+    # 토큰에 테넌트가 비어 있어도 로그인은 허용한다.
+    if not claim_tenants:
+        user.tenant = []
+
+    return user
+
+
+@router.post("/refresh", response_model=Token)
+def refresh_token(token: str = Depends(oauth2_scheme)):
+    """만료 전 토큰으로 새 토큰을 발급한다."""
+    payload = decode_access_token(token)
+    if not payload:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token",
+        )
+
+    email: str | None = payload.get("sub")
+    if not email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Token missing identity claims",
+        )
+
+    user = get_user(email)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
     new_token = create_access_token(subject=user.email, tenant=user.tenant)
     return {"access_token": new_token, "token_type": "bearer"}
