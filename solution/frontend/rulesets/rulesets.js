@@ -318,20 +318,6 @@ function initGroupActions() {
       });
     });
   }
-
-  const refreshRulesetsBtn = document.getElementById("refresh-rulesets-btn");
-  if (refreshRulesetsBtn) {
-    refreshRulesetsBtn.addEventListener("click", async () => {
-      refreshRulesetsBtn.disabled = true;
-      try {
-        await refreshAll();
-      } catch (error) {
-        console.error("Rulesets refresh failed:", error);
-      } finally {
-        refreshRulesetsBtn.disabled = false;
-      }
-    });
-  }
 }
 
 async function applyGroupRulesToAgents(buttonEl) {
