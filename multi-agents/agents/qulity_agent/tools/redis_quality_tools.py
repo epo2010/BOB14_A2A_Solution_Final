@@ -14,6 +14,14 @@ redis_client = redis.Redis(
     decode_responses=True
 )
 
+
+def _normalize_item_id(item_id: str) -> str:
+    """Normalize item_id values like ITEM003 to the key suffix stored under item:."""
+    sanitized = item_id.strip().upper()
+    if sanitized.startswith("ITEM"):
+        sanitized = sanitized[4:]
+    return sanitized
+
 def get_quality_data(quality_id: str) -> dict:
     """품질 ID로 품질 검사 결과 조회"""
     key = f"quality:{quality_id}"
@@ -84,3 +92,19 @@ def get_recall_items_list(product_id: str) -> dict:
         item_id = key.split(":")[-1]
         items.append(item_id)
     return {"status": "success", "product_id": product_id, "recall_items": items}
+
+def get_item_record(item_id: str) -> dict:
+    """Redis의 item:<id> 해시를 읽어서 항목 데이터를 반환."""
+    normalized_id = _normalize_item_id(item_id)
+    key = f"item:{normalized_id}"
+    data = redis_client.hgetall(key)
+    if not data:
+        return {
+            "status": "error",
+            "message": f"No item data found for {item_id} (normalized {normalized_id})."
+        }
+    return {
+        "status": "success",
+        "item_id": normalized_id,
+        "data": data
+    }

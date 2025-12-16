@@ -57,3 +57,11 @@ docker compose up --build
 ## 기타
 - 멀티 에이전트는 기본적으로 Google Gemini를 사용하며 `FALLBACK_TO_LOCAL=true` 설정 시 로컬 LLM으로 폴백할 수 있습니다.
 - Redis 인스턴스는 에이전트, IAM, 솔루션, JWT 용도로 분리되어 있으니 포트와 DB 번호를 맞춰 사용하세요.
+
+## Sample questions to type in the UI
+- DeliveryAgent 호출해서 배송 완료된 수 알려줘
+- VehicleAgent 호출해서 전체 차량 가용 현황 알려줘
+- ItemAgent 호출해서 I001 상세 정보 알려줘
+- QualityAgent 호출해서 품질 검사가 필요한 반품 상품 수 알려줘
+
+You can copy any of the above sentences and swap in a different ID or filter to request other information. Each agent has a tool that matches the phrase, so the orchestrator will call the right API automatically.

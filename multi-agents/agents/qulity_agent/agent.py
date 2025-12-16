@@ -26,6 +26,7 @@ try:
         get_items_for_return_qc,
         get_return_item_disposition,
         get_recall_items_list,
+        get_item_record,
     )
 except ImportError:
     # 로컬 환경 (agents/qulity_agent/)
@@ -33,6 +34,7 @@ except ImportError:
         get_items_for_return_qc,
         get_return_item_disposition,
         get_recall_items_list,
+        get_item_record,
     )
 
 from iam.policy_enforcement import PolicyEnforcementPlugin
@@ -78,6 +80,7 @@ root_agent = LlmAgent(
         FunctionTool(get_items_for_return_qc),
         FunctionTool(get_return_item_disposition),
         FunctionTool(get_recall_items_list),
+        FunctionTool(get_item_record),
     ],
 )
 

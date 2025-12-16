@@ -102,6 +102,8 @@ def seed_agent_redis(seed_version: str = "1") -> None:
             if len(args) % 2 != 0:
                 raise ValueError(f"HSET command for {key} has uneven field/value pairs: {args}")
             mapping = {args[i]: args[i + 1] for i in range(0, len(args), 2)}
+            if key.startswith("quality:") and key.count(":") == 1 and "qc_result" not in mapping:
+                mapping["qc_result"] = "pending"
             pipe.hset(key, mapping=mapping)
             applied += 1
         elif command == "SET":

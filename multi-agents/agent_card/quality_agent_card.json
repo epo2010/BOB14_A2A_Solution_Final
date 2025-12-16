@@ -83,6 +83,24 @@
                 ],
                 "additionalProperties": false
               }
+            },
+            {
+              "tool_id": "get_item_record",
+              "skill": "quality_management",
+              "description": "Redis item:<id>에 저장된 항목/재고 정보를 조회합니다.",
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "item_id": {
+                    "type": "string",
+                    "description": "ITEM003 또는 I003 형식의 item ID"
+                  }
+                },
+                "required": [
+                  "item_id"
+                ],
+                "additionalProperties": false
+              }
             }
           ]
         }
