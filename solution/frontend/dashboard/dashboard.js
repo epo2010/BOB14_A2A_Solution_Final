@@ -25,7 +25,10 @@ window.addEventListener('DOMContentLoaded', () => {
 function setupControls() {
   const refreshFlowButton = document.getElementById('refresh-flow');
   if (refreshFlowButton) {
-    refreshFlowButton.addEventListener('click', () => loadAgentFlow(true));
+    refreshFlowButton.addEventListener('click', () => {
+      clearHiddenExternalNodes();
+      loadAgentFlow(true);
+    });
   }
 
   const refreshDashboardButton = document.getElementById('refresh-dashboard');
@@ -497,6 +500,7 @@ async function loadAgentFlow(manual = false) {
 
     // 그래프 데이터 구성
     const flow = buildGraphFromData(agents, logs);
+    currentFlowData = flow;
     renderAgentFlowGraph(flow);
 
     if (statusPill) {
@@ -721,6 +725,35 @@ let graphContainer = null;
 let currentSimulation = null;
 let currentTransform = null;  // 현재 zoom/pan 상태 저장
 let nodePositions = new Map();  // 노드 위치 저장
+let currentFlowData = null; // 최근 로드된 그래프 데이터
+
+const HIDDEN_EXTERNAL_STORAGE_KEY = 'agentFlowHiddenExternalNodes';
+let hiddenExternalNodes = (() => {
+  try {
+    const raw = localStorage.getItem(HIDDEN_EXTERNAL_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    if (Array.isArray(parsed)) return new Set(parsed);
+  } catch (err) {
+    console.warn('hidden node storage parse failed', err);
+  }
+  return new Set();
+})();
+
+function persistHiddenExternalNodes() {
+  try {
+    localStorage.setItem(
+      HIDDEN_EXTERNAL_STORAGE_KEY,
+      JSON.stringify(Array.from(hiddenExternalNodes))
+    );
+  } catch (err) {
+    console.warn('hidden node storage persist failed', err);
+  }
+}
+
+function clearHiddenExternalNodes() {
+  hiddenExternalNodes.clear();
+  persistHiddenExternalNodes();
+}
 
 function renderAgentFlowGraph(flow) {
   try {
@@ -753,13 +786,23 @@ function renderAgentFlowGraph(flow) {
 
   graphSvg = svg;
 
+  const filteredNodesRaw = (flow.nodes || []).filter((node) => {
+    return !(node.type === 'external' && hiddenExternalNodes.has(node.id));
+  });
+  const visibleNodeIds = new Set(filteredNodesRaw.map((n) => n.id));
+  const filteredEdgesRaw = (flow.edges || []).filter((edge) => {
+    const sourceId = typeof edge.source === 'object' ? edge.source.id : edge.source;
+    const targetId = typeof edge.target === 'object' ? edge.target.id : edge.target;
+    return visibleNodeIds.has(sourceId) && visibleNodeIds.has(targetId);
+  });
+
   // 노드 생성 시 저장된 위치 복원 (위치가 있으면 고정)
-  const nodes = flow.nodes?.map((node) => {
+  const nodes = filteredNodesRaw.map((node) => {
     const savedPos = nodePositions.get(node.id);
     if (savedPos && savedPos.x !== undefined && savedPos.y !== undefined) {
       // 저장된 위치가 있으면 해당 위치로 고정
-      return { 
-        ...node, 
+      return {
+        ...node,
         x: savedPos.x, 
         y: savedPos.y, 
         fx: savedPos.x,  // 고정 위치 설정
@@ -768,7 +811,7 @@ function renderAgentFlowGraph(flow) {
     }
     return { ...node };
   }) || [];
-  const links = flow.edges?.map((edge) => ({ ...edge })) || [];
+  const links = filteredEdgesRaw.map((edge) => ({ ...edge }));
 
   // Create main container for all graph elements FIRST
   graphContainer = svg.append('g').attr('class', 'graph-main');
@@ -1175,10 +1218,29 @@ function showNodeDetailPanel(node, links) {
     nodeName.textContent = node.name || node.id;
   }
 
+  // 숨기기 버튼 (외부 노드만)
+  const hideBtn = document.getElementById('panel-hide-node');
+  if (hideBtn) {
+    if (node.type === 'external') {
+      hideBtn.classList.remove('hidden');
+      hideBtn.onclick = () => {
+        hiddenExternalNodes.add(node.id);
+        persistHiddenExternalNodes();
+        hideNodeDetailPanel();
+        if (currentFlowData) {
+          renderAgentFlowGraph(currentFlowData);
+        }
+      };
+    } else {
+      hideBtn.classList.add('hidden');
+      hideBtn.onclick = null;
+    }
+  }
+
   // 기본 정보 업데이트
   const basicInfo = document.getElementById('panel-basic-info');
   if (basicInfo) {
-    const connections = links.filter(l => 
+    const connections = links.filter(l =>
       l.source.id === node.id || l.target.id === node.id ||
       l.source === node.id || l.target === node.id
     ).length;
