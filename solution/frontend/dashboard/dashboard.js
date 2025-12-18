@@ -845,7 +845,7 @@ function renderAgentFlowGraph(flow) {
       if (d.type === 'warning') return 'rgba(255, 170, 51, 0.5)';
       return 'rgba(101, 209, 255, 0.35)';
     })
-    .attr('stroke-width', (d) => Math.max(1.5, Math.log((d.count || 1) + 1) * 1.5))
+    .attr('stroke-width', 2)
     .attr('marker-end', 'url(#arrowhead)')
     .style('cursor', 'pointer')
     .on('mouseover', (event, d) => showLinkTooltip(event, d))
